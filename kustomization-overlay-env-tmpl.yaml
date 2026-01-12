@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ${NAMESPACE}
+
+resources:
+  - ../../base
+  - ${APP_NAME}-${ENV}-externalsecret.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: ${APP_NAME}-${ENV}-config        # matches <app>-config in envFrom
+    envs:
+      - ${APP_NAME}-config-${ENV}.env
+
