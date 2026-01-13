@@ -1,3 +1,6 @@
+IMAGE_NAME ?= $(shell echo "$(FINAL_NAME)" | sed -E 's@[@].*$$@@; s@:[^/]*$$@@')
+DRY_RUN    ?= --dry-run=client
+
 APP_NAME   ?= demo
 ENV        ?= int              # int | qas | prd
 FINAL_NAME ?= $(APP_NAME):latest
@@ -13,6 +16,9 @@ export NAMESPACE
 
 # "make APP_NAME=my-app" → bootstrap
 default: bootstrap
+
+debug:
+	echo $(IMAGE_NAME)
 
 bootstrap:
 	@echo "Bootstrapping app '$(APP_NAME)' with image '$(FINAL_NAME)' in namespace '$(NAMESPACE)'..."
@@ -42,6 +48,12 @@ bootstrap:
 		ENV=$$e envsubst < app_envfile-tmpl > "./$(APP_NAME)/overlays/$$e/$(APP_NAME)-config-$$e.env"; \
 	done
 
+
+		@echo "__adding per-env patches (resources + env/component labels + annotations)__"
+	@for e in $(ENVS); do \
+		ENV=$$e envsubst < patch-$$e-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch.yaml"; \
+	done
+
 	@echo "__✅ created kustomize structure for $(APP_NAME)__"
 	@echo "  - ./$(APP_NAME)/base"
 	@echo "  - ./$(APP_NAME)/overlays/{int,qas,prd}"
@@ -53,8 +65,9 @@ clean:
 
 # Generic deploy uses ENV (int/qas/prd)
 deploy:
-	@echo "Deploying '$(APP_NAME)' to env '$(ENV)'..."
-	kubectl apply --dry-run=client  -k "./$(APP_NAME)/overlays/$(ENV)"
+	@echo "Deploying '$(APP_NAME)' to env '$(ENV)' with image '$(FINAL_NAME)'..."
+	@cd "./$(APP_NAME)/overlays/$(ENV)" &&  kustomize edit set image "$(IMAGE_NAME)=$(NAMESPACE)/$(APP_NAME):$(ENV)"
+	kubectl apply $(DRY_RUN) -k "./$(APP_NAME)/overlays/$(ENV)" || kubectl replace $(DRY_RUN) -k "./$(APP_NAME)/overlays/$(ENV)" 
 
 # Convenience targets; ENV is set here and used in deploy + templates
 int: ENV=int
