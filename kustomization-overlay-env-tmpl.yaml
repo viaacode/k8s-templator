@@ -15,5 +15,8 @@ configMapGenerator:
     envs:
       - ${APP_NAME}-config-${ENV}.env
 
-patchesStrategicMerge:
+namePrefix: ${NAMESPACE}-
+nameSuffix: -${ENV}
+
+patches:
   - patch.yaml

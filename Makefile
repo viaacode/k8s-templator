@@ -6,7 +6,7 @@ ENV        ?= int              # int | qas | prd
 FINAL_NAME ?= $(APP_NAME):latest
 NAMESPACE  ?= meemoo-infra
 ENVS       := int qas prd
-
+REGISTRY_HOST ?= meeregistrymoo.azurecr.io
 export APP_NAME
 export ENV
 export FINAL_NAME
@@ -62,12 +62,14 @@ clean:
 	@echo "__🤟 removing $(APP_NAME) dir __"
 	@rm -rf "./$(APP_NAME)"
 	@echo "__✅ removed $(APP_NAME) dir __"
-
 # Generic deploy uses ENV (int/qas/prd)
 deploy:
 	@echo "Deploying '$(APP_NAME)' to env '$(ENV)' with image '$(FINAL_NAME)'..."
-	@cd "./$(APP_NAME)/overlays/$(ENV)" &&  kustomize edit set image "$(IMAGE_NAME)=$(NAMESPACE)/$(APP_NAME):$(ENV)"
-	kubectl apply $(DRY_RUN) -k "./$(APP_NAME)/overlays/$(ENV)" || kubectl replace $(DRY_RUN) -k "./$(APP_NAME)/overlays/$(ENV)" 
+	cd "./$(APP_NAME)/overlays/$(ENV)" &&  kustomize edit set image "$(FINAL_NAME)=$(REGISTRY_HOST)/$(NAMESPACE)/$(APP_NAME):$(ENV)" && \
+  kubectl apply $(DRY_RUN) -k .
+
+undeploy:
+	kubectl delete -l app=client  svc,deploy,ing
 
 # Convenience targets; ENV is set here and used in deploy + templates
 int: ENV=int
