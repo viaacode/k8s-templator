@@ -1,4 +1,4 @@
-kubectl create deployment "${APP_NAME}-${ENV}" \
+kubectl create deployment "${APP_NAME}" \
   --image="${FINAL_NAME}" \
   --namespace="${NAMESPACE}" \
   --replicas=0 \

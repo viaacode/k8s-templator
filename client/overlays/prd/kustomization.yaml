@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hetarchief-v3
+
+resources:
+  - ../../base
+  - client-prd-externalsecret.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: client-prd-config        # matches <app>-config in envFrom
+    envs:
+      - client-config-prd.env
+
