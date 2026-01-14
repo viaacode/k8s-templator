@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${APP_NAME}
+  labels:
+    env: int
+    component: ${NAMESPACE}
+  annotations:
+    meemoo.be/kustomized: "true"
+    meemoo.be/project: "${NAMESPACE}"
+spec:
+  selector:
+    env: int
+apiVersion: networking.k8s.io/v1

@@ -1,3 +1,10 @@
+## ___________________Usage___________________
+# Use deploy for you ci app to set image tag
+# Use DRY_RUN='' to disable dry run during deploy , use DRY_RUN='-o yaml' to view yamls that are created
+#
+CFG_REPO_URL  ?= https://github.com/viaacode/hetarchief-v3_k8s-resources.git # namespace apps
+REPO_URL      ?= https://github.com/viaacode/hetarchief-client.git # code with dockerfile ...
+SVC_PORT      ?= 5000
 IMAGE_NAME    ?= $(shell echo "$(FINAL_NAME)" | sed -E 's@[@].*$$@@; s@:[^/]*$$@@')
 DRY_RUN       ?= --dry-run=client
 # defaults
@@ -7,21 +14,59 @@ FINAL_NAME    ?= $(APP_NAME):latest
 NAMESPACE     ?= meemoo-infra
 ENVS          := int qas prd
 REGISTRY_HOST ?= meeregistrymoo.azurecr.io
-APPS          := client proxy hasura
 
-.PHONY: build-all
+
+## configuration list of NAMESAPCE apps
+APPS          := client proxy hasura
+# App Metadata: Port and Source Code Repo
+client_PORT := 3000
+client_REPO := https://github.com/viaacode/hetarchief-client.git
+
+proxy_PORT  := 5000
+proxy_REPO  := https://github.com/viaacode/hetarchief-proxy.git
+
+hasura_PORT := 8080
+hasura_REPO := https://github.com/viaacode/hetarchief-hasura.git
+
+
+.PHONY: build-all deploy-all-envs
 
 # Example: Run your templator and kustomize build for every app
 build-all:
 	@$(foreach app, $(APPS), \
-		echo "Building $(app)..."; \
-		APP_NAME=$(app) $(MAKE) bootstrap; \
-                ENV=int $(MAKE) deploy; \
-                ENV=qas $(MAKE) deploy; \
-                ENV=prd  $(MAKE) deploy; \
+		echo "--- Processing $(app) ---"; \
+		APP_NAME=$(app) \
+		SVC_PORT=$($(app)_PORT) \
+		REPO_URL=$($(app)_REPO) \
+		$(MAKE) bootstrap; \
+		$(MAKE) deploy-all-envs APP_NAME=$(app) SVC_PORT=$($(app)_PORT) REPO_URL=$($(app)_REPO); \
 	)
+	$(MAKE) deploy-all-envs
 	$(MAKE) create_structure
-	@echo "created: `tree k8s-resources/`"
+	$(MAKE) generate-argocd
+	@echo "All resources generated in k8s-resources/"
+	tree k8s-resources
+
+# Helper to run deploy for all envs this sets the tag to $ENV
+deploy-all-envs:
+	@for e in $(ENVS); do \
+		ENV=$$e $(MAKE) deploy; \
+	done
+
+
+.PHONY: generate-argocd
+# This target generates the ArgoCD manifests for each app/env
+generate-argocd:
+	@echo "__creating ArgoCD manifests__"
+	@mkdir -p k8s-resources/argocd/int k8s-resources/argocd/qas k8s-resources/argocd/prd
+	@$(foreach env, $(ENVS), \
+		ENV=$(env) envsubst < argocd-root-tmpl.yaml > k8s-resources/argocd/$(env)/root-app.yaml; \
+		$(foreach app, $(APPS), \
+			APP_NAME=$(app) ENV=$(env) envsubst < argocd-child-tmpl.yaml > k8s-resources/argocd/$(env)/$(app)-$(env).yaml; \
+		) \
+	)
+
+
 create_structure:
 	  @$(foreach app, $(APPS), \
                 echo "Building $(app)..."; \
@@ -72,10 +117,21 @@ bootstrap:
 	done
 
 
-		@echo "__adding per-env patches (resources + env/component labels + annotations)__"
+	@echo "__adding per-env patches (resources + env/component labels + annotations)__"
+	## split resources in more files
+	@echo "__splitting and adding per-env patches__"
 	@for e in $(ENVS); do \
-		ENV=$$e envsubst < patch-$$e-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch.yaml"; \
+           ENV=$$e envsubst < patch-$$e-deployment-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch-deployment.yaml"; \
+           ENV=$$e envsubst < patch-$$e-service-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch-service.yaml"; \
+           ENV=$$e envsubst < patch-$$e-ingress-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch-ingress.yaml"; \
 	done
+	@for e in $(ENVS); do \
+           cd "./$(APP_NAME)/overlays/$$e"; \
+           for f in patch-*.yaml; do \
+             kustomize edit add patch --path "$$f"; \
+           done; \
+           cd -; \
+        done
 
 	@echo "__✅ created kustomize structure for $(APP_NAME)__"
 	@echo "  - ./$(APP_NAME)/base"

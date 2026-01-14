@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: ${APP_NAME}
   labels:
-    env: prd
+    env: int
     component: ${NAMESPACE}
   annotations:
     meemoo.be/kustomized: "true"
@@ -11,11 +11,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      env: prd
+      env: int
   template:
     metadata:
       labels:
-        env: prd
+        env: int
         component: ${NAMESPACE}
       annotations:
         meemoo.be/kustomized: "true"
@@ -25,33 +25,8 @@ spec:
         - name: ${APP_NAME}
           resources:
             requests:
-              cpu: "200m"
-              memory: "256Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
               cpu: "200m"
               memory: "256Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ${APP_NAME}
-  labels:
-    env: prd
-    component: ${NAMESPACE}
-  annotations:
-    meemoo.be/kustomized: "true"
-    meemoo.be/project: "${NAMESPACE}"
-spec:
-  selector:
-    env: prd
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ${APP_NAME}
-  labels:
-    env: prd
-    component: ${NAMESPACE}
-  annotations:
-    meemoo.be/kustomized: "true"
-    meemoo.be/project: "${NAMESPACE}"

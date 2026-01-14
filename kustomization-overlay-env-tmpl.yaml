@@ -19,7 +19,9 @@ namePrefix: ${NAMESPACE}-
 nameSuffix: -${ENV}
 
 patches:
-  - path: patch.yaml
+  - path:  patch-deployment.yaml
+  - path:  patch-service.yaml
+  - path:  patch-ingress.yaml
 images:
 - name: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}:devel
   newName: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}
