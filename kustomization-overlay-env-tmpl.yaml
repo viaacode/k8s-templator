@@ -19,4 +19,4 @@ namePrefix: ${NAMESPACE}-
 nameSuffix: -${ENV}
 
 patches:
-  - patch.yaml
+  - path: patch.yaml
