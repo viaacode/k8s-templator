@@ -1,16 +1,39 @@
-IMAGE_NAME ?= $(shell echo "$(FINAL_NAME)" | sed -E 's@[@].*$$@@; s@:[^/]*$$@@')
-DRY_RUN    ?= --dry-run=client
-
-APP_NAME   ?= demo
-ENV        ?= int              # int | qas | prd
-FINAL_NAME ?= $(APP_NAME):latest
-NAMESPACE  ?= meemoo-infra
-ENVS       := int qas prd
+IMAGE_NAME    ?= $(shell echo "$(FINAL_NAME)" | sed -E 's@[@].*$$@@; s@:[^/]*$$@@')
+DRY_RUN       ?= --dry-run=client
+# defaults
+APP_NAME      ?= demo
+ENV           ?= int              # int | qas | prd
+FINAL_NAME    ?= $(APP_NAME):latest
+NAMESPACE     ?= meemoo-infra
+ENVS          := int qas prd
 REGISTRY_HOST ?= meeregistrymoo.azurecr.io
-export APP_NAME
-export ENV
-export FINAL_NAME
-export NAMESPACE
+APPS          := client proxy hasura
+
+.PHONY: build-all
+
+# Example: Run your templator and kustomize build for every app
+build-all:
+	@$(foreach app, $(APPS), \
+		echo "Building $(app)..."; \
+		APP_NAME=$(app) $(MAKE) bootstrap; \
+                ENV=int $(MAKE) deploy; \
+                ENV=qas $(MAKE) deploy; \
+                ENV=prd  $(MAKE) deploy; \
+	)
+	$(MAKE) create_structure
+	@echo "created: `tree k8s-resources/`"
+create_structure:
+	  @$(foreach app, $(APPS), \
+                echo "Building $(app)..."; \
+                mv $(app) k8s-resources/$(app); \
+        )
+push:
+	git add k8s-resources/
+	git commit -m "Deploying $(NAMESAPCE) stack: $(APPS)"
+	git push origin main
+
+
+export APP_NAME ENV FINAL_NAME NAMESPACE
 
 .PHONY: default bootstrap clean deploy int qas prd
 
@@ -62,6 +85,13 @@ clean:
 	@echo "__🤟 removing $(APP_NAME) dir __"
 	@rm -rf "./$(APP_NAME)"
 	@echo "__✅ removed $(APP_NAME) dir __"
+	@$(foreach app, $(APPS), \
+                echo "__🤟 Deletinging $(app)..."; \
+                rm -rf k8s-resources/$(app); \
+        )
+	@echo "__✅ removed $(APPS) dirs from k8s-resources/ __"
+
+
 # Generic deploy uses ENV (int/qas/prd)
 deploy:
 	@echo "Deploying '$(APP_NAME)' to env '$(ENV)' with image '$(FINAL_NAME)'..."

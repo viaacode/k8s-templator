@@ -20,3 +20,7 @@ nameSuffix: -${ENV}
 
 patches:
   - path: patch.yaml
+images:
+- name: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}:devel
+  newName: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}
+  newTag: ${ENV}
