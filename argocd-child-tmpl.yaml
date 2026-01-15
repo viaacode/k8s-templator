@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: ${REPO_URL}
-    targetRevision: HEAD
+    repoURL: ${CFG_REPO_URL}
+    targetRevision: main
     path: ${APP_NAME}/overlays/${ENV}
   destination:
     server: https://kubernetes.default.svc

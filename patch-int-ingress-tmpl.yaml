@@ -1,9 +1,0 @@
-kind: Ingress
-metadata:
-  name: ${APP_NAME}
-  labels:
-    env: int
-    component: ${NAMESPACE}
-  annotations:
-    meemoo.be/kustomized: "true"
-    meemoo.be/project: "${NAMESPACE}"

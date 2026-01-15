@@ -60,12 +60,6 @@ deploy-all-envs:
 		ENV=$$e $(MAKE) deploy; \
 	done
 
-redeploy-all-envs:
-	@for e in $(ENVS); do \
-                ENV=$$e $(MAKE) redeploy; \
-        done
-
-
 undeploy-all-apps:
 	@for e in $(APPS); do \
                 APP_NAME=$$e $(MAKE) undeploy; \
@@ -104,8 +98,6 @@ default: bootstrap
 
 debug:
 	echo $(IMAGE_NAME)
-lint:
-	kustomize build "k8s-resources/$(APP_NAME)/overlays/$(ENV)" >/dev/null
 
 bootstrap:
 	@echo "Bootstrapping app '$(APP_NAME)' with image '$(FINAL_NAME)' in namespace '$(NAMESPACE)'..."
@@ -128,24 +120,17 @@ bootstrap:
 	@echo "__adding ExternalSecret manifests__"
 	@for e in $(ENVS); do \
 		ENV=$$e envsubst < externalsecret-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/$(APP_NAME)-$$e-externalsecret.yaml"; \
+                PREFIX=$(NAMESPACE) SUFFIX=$$e ENV=$$e envsubst < patch.yaml > "./$(APP_NAME)/overlays/$$e/patch-replica.yaml"; \
 	done
-
 
 	@echo "__adding app config env files__"
 	@for e in $(ENVS); do \
 		ENV=$$e envsubst < app_envfile-tmpl > "./$(APP_NAME)/overlays/$$e/$(APP_NAME)-config-$$e.env"; \
 	done
 
-	@for e in $(ENVS); do \
-		case $$e in \
-		  int) REPLICAS=1 CPU_REQUEST=50m  MEM_REQUEST=64Mi  CPU_LIMIT=200m MEM_LIMIT=256Mi ;; \
-		  qas) REPLICAS=1 CPU_REQUEST=100m MEM_REQUEST=128Mi CPU_LIMIT=250m MEM_LIMIT=384Mi ;; \
-		  prd) REPLICAS=2 CPU_REQUEST=200m MEM_REQUEST=256Mi CPU_LIMIT=200m MEM_LIMIT=256Mi ;; \
-		esac; \
-		ENV=$$e REPLICAS=$$REPLICAS envsubst < patch-replicas-tmpl.yaml  > "./$(APP_NAME)/overlays/$$e/patch-replicas.yaml"; \
-		ENV=$$e CPU_REQUEST=$$CPU_REQUEST MEM_REQUEST=$$MEM_REQUEST CPU_LIMIT=$$CPU_LIMIT MEM_LIMIT=$$MEM_LIMIT \
-		  envsubst < patch-resources-tmpl.yaml > "./$(APP_NAME)/overlays/$$e/patch-resources.yaml"; \
-	done
+
+	@echo "__adding per-env patches (resources + env/component labels + annotations)__"
+	## split resources in more files
 
 
 	@echo "__✅ created kustomize structure for $(APP_NAME)__"
@@ -167,12 +152,6 @@ clean:
 deploy:
 	@echo "Deploying '$(APP_NAME)' to env '$(ENV)' with image '$(FINAL_NAME)'..."
 	cd "./$(APP_NAME)/overlays/$(ENV)" &&  kustomize edit set image "$(FINAL_NAME)=$(REGISTRY_HOST)/$(NAMESPACE)/$(APP_NAME):$(ENV)" && \
-  kubectl apply $(DRY_RUN) -k .
-
-redeploy:
-	@echo "Deploying '$(APP_NAME)' to env '$(ENV)' with image '$(FINAL_NAME)'..."
-	cd "k8s-resources/$(APP_NAME)/overlays/$(ENV)" && \
-  kustomize edit set image "$(FINAL_NAME)=$(REGISTRY_HOST)/$(NAMESPACE)/$(APP_NAME):$(ENV)" && \
   kubectl apply $(DRY_RUN) -k .
 
 undeploy:

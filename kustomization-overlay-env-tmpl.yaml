@@ -11,18 +11,42 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
-  - name: ${APP_NAME}-${ENV}-config        # matches <app>-config in envFrom
+  - name: ${APP_NAME}-config        # matches <app>-config in envFrom
     envs:
       - ${APP_NAME}-config-${ENV}.env
 
-namePrefix: ${NAMESPACE}-
-nameSuffix: -${ENV}
+namePrefix: ${PREFIX}-
+nameSuffix: -${SUFFIX}
+
+labels:
+- includeSelectors: true
+  pairs:
+    env: ${ENV}
+
 
 patches:
-  - path:  patch-deployment.yaml
-  - path:  patch-service.yaml
-  - path:  patch-ingress.yaml
-images:
-- name: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}:devel
-  newName: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}
-  newTag: ${ENV}
+  - path: patch-replicas.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: ".*"
+
+  - path: patch-resources.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: ".*"
+
+#patches:
+#- path: patch-replica.yaml
+#  target:
+#    kind: Deployment
+#    name: ${PREFIX}-${APP_NAME}-${ENV}
+
+
+#images:
+#- name: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}:devel
+#  newName: ${REGISTRY_HOST}/${NAMESPACE}/${APP_NAME}
+#  newTag: ${ENV}
