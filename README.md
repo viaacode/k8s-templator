@@ -70,7 +70,13 @@ Vault key: /hetarchief-v3/client-int
 ## Usage
 
 - edit the app_envfile-tmpl add all your envs
+-  use DRY_RUN='' to disable dry run
+-  edit the APPS list for more apps 
+- copy the rendered templates to a config repo to deploy with argocd
 
+## TODO
+
+argocd project / app /app set uitzoeken hoe we het willen
 - make sure you have $APP_NAME $SVC_PORT $NAMESPACE $ENV set!
 
 - run make bootsstrap to create the yamls
